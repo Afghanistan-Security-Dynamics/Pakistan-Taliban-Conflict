@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIVE: Pakistan–Afghanistan War Map</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Segoe UI',sans-serif; background:#080808; color:#fff; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+#header {
+  background:linear-gradient(90deg,#1a0000,#2e0000,#1a0000);
+  border-bottom:2px solid #ff1a00;
+  padding:7px 14px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+}
+.live-badge { display:flex;align-items:center;gap:5px;background:#bb0000;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:800;letter-spacing:2px;animation:bp 1.2s infinite; }
+.ldot { width:6px;height:6px;background:#fff;border-radius:50%;animation:ld .6s infinite; }
+@keyframes bp{0%,100%{opacity:1}50%{opacity:.6}} @keyframes ld{0%,100%{opacity:1}50%{opacity:.1}}
+
+/* KABUL BREAKING BANNER */
+#kabul-banner {
+  background:linear-gradient(90deg,#2a0000,#500000,#2a0000);
+  border-bottom:3px solid #ff3300;
+  padding:6px 14px; flex-shrink:0;
+  display:flex; align-items:center; gap:10px;
+  animation:kb 1.5s infinite;
+}
+@keyframes kb{0%,100%{background:linear-gradient(90deg,#2a0000,#500000,#2a0000)}50%{background:linear-gradient(90deg,#440000,#6a0000,#440000)}}
+.kb-lbl { background:#ff2200;color:#fff;font-size:11px;font-weight:800;padding:3px 10px;border-radius:3px;white-space:nowrap;letter-spacing:1px;animation:bp .8s infinite; }
+.kb-text { font-size:11px; color:#ffbbaa; line-height:1.5; }
+
+#ticker { background:#100000; border-bottom:1px solid #1e0000; padding:4px 0; flex-shrink:0; overflow:hidden; white-space:nowrap; }
+.ticker-inner { display:inline-block; animation:tick 90s linear infinite; font-size:10px; color:#ff8888; padding-left:100%; }
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+.ts { color:#ff3333; margin:0 12px; }
+
+#map-container { flex:1; position:relative; overflow:hidden; }
+#map { width:100%; height:100%; }
+
+#sidebar {
+  position:absolute; top:8px; right:8px; z-index:1000;
+  width:292px; max-height:calc(100% - 16px);
+  background:rgba(6,6,6,0.95); border:1px solid #262626; border-radius:8px;
+  overflow-y:auto; backdrop-filter:blur(14px);
+}
+#sidebar::-webkit-scrollbar{width:3px}
+#sidebar::-webkit-scrollbar-thumb{background:#2e2e2e}
+.feedhdr { background:#140000; border-bottom:1px solid #ff1a00; padding:7px 11px; font-size:11px; letter-spacing:1px; color:#ff5555; position:sticky; top:0; z-index:2; }
+
+/* KABUL TOP PIN */
+.kabul-pin {
+  background:linear-gradient(135deg,#300000,#520000);
+  border:2px solid #ff3300; border-left:5px solid #ff1100;
+  padding:11px 11px; cursor:pointer;
+  animation:kpin 1.5s infinite;
+}
+@keyframes kpin{0%,100%{box-shadow:inset 0 0 10px rgba(255,50,0,.2),0 0 15px rgba(255,30,0,.15)}50%{box-shadow:inset 0 0 22px rgba(255,50,0,.4),0 0 25px rgba(255,30,0,.3)}}
+.kpin-title { font-size:14px; font-weight:800; color:#ff4400; margin-bottom:4px; letter-spacing:.3px; text-shadow:0 0 10px #ff220066; }
+.kpin-sub { font-size:10px; color:#cc8866; line-height:1.5; margin-bottom:6px; }
+.kstat { display:inline-block; background:#2a0000; border:1px solid #550000; border-radius:4px; padding:2px 7px; font-size:9px; color:#ff9977; margin-right:4px; margin-bottom:3px; }
+
+.incident { padding:8px 11px; border-bottom:1px solid #141414; cursor:pointer; transition:background .15s; }
+.incident:hover { background:#121212; }
+.incident.hot { border-left:3px solid #ff2200; }
+.incident.afg { border-left:3px solid #0088ff; }
+.inc-title { font-size:11px; font-weight:600; margin-bottom:3px; line-height:1.35; }
+
+.tag { display:inline-block; padding:1px 5px; border-radius:8px; font-size:9px; font-weight:700; margin-right:2px; margin-bottom:2px; }
+.t-pak{background:#330000;color:#ff9977}
+.t-afg{background:#001a33;color:#77aaff}
+.t-clash{background:#2a2a00;color:#ffff88}
+.t-bdr{background:#001122;color:#6699bb}
+.t-civ{background:#1a1a1a;color:#888}
+.t-trg{background:#251500;color:#ffaa55}
+.t-live{background:#440000;color:#ff7777;animation:lb .7s infinite}
+.t-afglive{background:#001a33;color:#44aaff;animation:lb .7s infinite}
+.t-kabul{background:#550000;color:#ff4400;font-size:10px;font-weight:800;animation:lb .5s infinite}
+@keyframes lb{0%,100%{opacity:1}50%{opacity:.4}}
+
+#stats {
+  position:absolute; top:8px; left:8px; z-index:1000;
+  background:rgba(6,6,6,0.95); border:1px solid #202020; border-radius:8px;
+  padding:9px 13px; backdrop-filter:blur(14px); min-width:172px;
+}
+.sv{font-size:18px;font-weight:700} .sl{font-size:9px;color:#3e3e3e;margin-top:-1px;margin-bottom:5px}
+.sdiv{border:none;border-top:1px solid #161616;margin:4px 0}
+
+#legend {
+  position:absolute; bottom:22px; left:8px; z-index:1000;
+  background:rgba(6,6,6,0.95); border:1px solid #202020; border-radius:8px;
+  padding:9px 11px; backdrop-filter:blur(14px); font-size:9px;
+}
+#legend h3{font-size:9px;margin-bottom:6px;color:#444;letter-spacing:1px}
+.leg{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.ld{width:11px;height:11px;border-radius:50%;flex-shrink:0;border:1.5px solid rgba(255,255,255,.1)}
+
+#srcbar { position:absolute;bottom:0;left:0;right:0;z-index:999;background:rgba(4,4,4,.92);border-top:1px solid #181818;padding:3px 10px;font-size:9px;color:#383838;display:flex;gap:12px;align-items:center; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <div style="font-size:15px;font-weight:800;">&#128308; LIVE — Pakistan vs Afghanistan: Open War</div>
+    <div style="font-size:9px;color:#484848;margin-top:1px;">Updated: <span id="ts"></span> &nbsp;&#183;&nbsp; WashPost &#183; Al Jazeera &#183; CNN &#183; Reuters &#183; Euronews &#183; Wikipedia</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;">
+    <div style="text-align:right">
+      <div style="font-size:8px;color:#484848">PAK OP</div>
+      <div style="font-size:10px;font-weight:800;color:#ffaa00;">GHAZAB-LIL-HAQQ</div>
+    </div>
+    <div class="live-badge"><div class="ldot"></div>LIVE</div>
+  </div>
+</div>
+
+<div id="kabul-banner">
+  <div class="kb-lbl">&#9992;&#128308; KABUL STRUCK NOW</div>
+  <div class="kb-text">
+    <b style="color:#ff6644">Washington Post (15 min ago) + Al Jazeera (now):</b>
+    "At least <b>3 explosions</b> and sound of aircraft heard in Kabul" — hours after AFG launched cross-border attack on PAK. Aircraft sounds confirmed over capital. Identity of aircraft not yet confirmed.
+  </div>
+</div>
+
+<div id="ticker">
+  <span class="ticker-inner">
+    &#128308; BREAKING — 3 EXPLOSIONS + AIRCRAFT HEARD IN KABUL RIGHT NOW — Washington Post, 15 min ago &nbsp;<span class="ts">|</span>
+    &#9992; Al Jazeera: "at least one loud explosion reported in Kabul along with sound of aircraft" &nbsp;<span class="ts">|</span>
+    &#9876; Taliban claims 15 PAK posts captured, 40 soldiers killed — PAK DENIES: "fantasy and propaganda" &nbsp;<span class="ts">|</span>
+    &#127477;&#127472; PAK counter-attacks killed 72 Taliban, 120+ wounded — Al Jazeera + Geo.tv &nbsp;<span class="ts">|</span>
+    &#9889; AFG "large-scale offensive" active: Chitral &#183; Khyber &#183; Mohmand &#183; Kurram &#183; Bajaur &#183; Kunar &nbsp;<span class="ts">|</span>
+    &#128163; Feb 21-22: PAF struck Nangarhar, Paktika, Khost — UNAMA: 13 civilians killed &nbsp;<span class="ts">|</span>
+    &#127966; India condemned PAK strikes, backs AFG sovereignty — MEA Jaiswal &nbsp;<span class="ts">|</span>
+    &#128205; Oct 9 2025: PAF struck Kabul PD4 — 9 killed, 37 injured. Now Kabul struck AGAIN &nbsp;
+  </span>
+</div>
+
+<div id="map-container">
+  <div id="map"></div>
+
+  <div id="stats">
+    <div><div class="sv" style="color:#ff2200">&#128308; WAR</div><div class="sl">STATUS — FEB 26/27 2026</div></div>
+    <hr class="sdiv">
+    <div style="font-size:9px;color:#ff4400;font-weight:700;margin-bottom:4px">&#9992; KABUL STRUCK — NOW</div>
+    <div><div class="sv" style="color:#ff5500">3</div><div class="sl">EXPLOSIONS IN KABUL (WASHPOST)</div></div>
+    <hr class="sdiv">
+    <div><div class="sv" style="color:#ff8844">72</div><div class="sl">PAK CLAIM: TALIBAN KILLED</div></div>
+    <div><div class="sv" style="color:#ffaa66">120+</div><div class="sl">PAK CLAIM: TALIBAN WOUNDED</div></div>
+    <hr class="sdiv">
+    <div><div class="sv" style="color:#44aaff">15</div><div class="sl">AFG CLAIM: PAK POSTS SEIZED</div></div>
+    <div><div class="sv" style="color:#66ccff">40</div><div class="sl">AFG CLAIM: PAK SOLDIERS KIA</div></div>
+    <hr class="sdiv">
+    <div><div class="sv" style="color:#88ff88">2</div><div class="sl">PAK CONFIRMED OWN KIA</div></div>
+    <hr class="sdiv">
+    <div><div class="sv" style="color:#ff5555">13</div><div class="sl">UNAMA: CIVILIANS KILLED FEB 22</div></div>
+  </div>
+
+  <div id="sidebar">
+    <div class="feedhdr">&#128225; LIVE FEED — FEB 26/27 2026 &nbsp;<span id="feedtime" style="float:right;font-size:9px;color:#444;font-weight:normal"></span></div>
+
+    <!-- KABUL TOP PIN -->
+    <div class="kabul-pin" onclick="map.setView([34.52,69.18],11,{animate:true})">
+      <div class="kpin-title">&#9992;&#128308; KABUL — EXPLOSIONS CONFIRMED NOW</div>
+      <div class="kpin-sub">
+        <b style="color:#ff6644">Washington Post (15 min ago):</b> "At least three explosions and the sound of aircraft reverberated in Kabul early Friday, hours after Afghanistan launched a cross-border attack on Pakistan."<br><br>
+        <b style="color:#ff6644">Al Jazeera (now):</b> "Hours after Afghanistan announced its border offensive, at least one loud explosion was reported in the capital Kabul along with the sound of aircraft."<br><br>
+        Aircraft identity not yet confirmed. Likely Pakistan PAF in retaliation for Afghan offensive — NOT officially confirmed yet.
+      </div>
+      <span class="kstat">&#128205; Kabul, Afghanistan</span>
+      <span class="kstat">&#128163; 3 explosions</span>
+      <span class="kstat">&#9992; Aircraft heard</span>
+      <span class="kstat">&#128308; HAPPENING NOW</span>
+    </div>
+
+    <div id="feed"></div>
+  </div>
+
+  <div id="legend">
+    <h3>LEGEND</h3>
+    <div class="leg"><div class="ld" style="background:#ff2200;box-shadow:0 0 8px #ff2200"></div><b style="color:#ff5533">Kabul Explosions NOW</b></div>
+    <div class="leg"><div class="ld" style="background:#ff0000"></div> PAF Strike Feb 22</div>
+    <div class="leg"><div class="ld" style="background:#ff5500"></div> PAF Strike Oct 2025</div>
+    <div class="leg"><div class="ld" style="background:#0088ff;box-shadow:0 0 5px #0055aa"></div> AFG Offensive LIVE</div>
+    <div class="leg"><div class="ld" style="background:#ffcc00"></div> Active Clashes</div>
+    <div class="leg"><div class="ld" style="background:#aa00aa"></div> Border Closed</div>
+    <div class="leg"><div class="ld" style="background:#44cc44"></div> Civilian Strike Zone</div>
+    <div class="leg"><div class="ld" style="background:#ff8800"></div> Trigger Event</div>
+    <div style="margin-top:5px;border-top:1px solid #181818;padding-top:4px;color:#2e2e2e;font-size:8px">
+      Kabul aircraft identity unconfirmed.<br>All casualty claims contested by both sides.
+    </div>
+  </div>
+
+  <div id="srcbar">
+    <span style="color:#2a2a2a;font-weight:600">SOURCES:</span>
+    <span>WashPost</span><span>Al Jazeera</span><span>CNN</span><span>Reuters</span><span>Euronews</span><span>Geo.tv</span><span>Wikipedia</span><span>UNAMA</span>
+    <span style="margin-left:auto">Updated: <span id="srctime"></span></span>
+  </div>
+</div>
+
+<script>
+const now = new Date();
+document.getElementById('ts').textContent = now.toLocaleString();
+document.getElementById('feedtime').textContent = now.toLocaleTimeString();
+document.getElementById('srctime').textContent = now.toLocaleTimeString();
+
+const map = L.map('map',{center:[33.5,69.5],zoom:6});
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{attribution:'&copy; OSM &copy; CartoDB',maxZoom:19}).addTo(map);
+
+L.polyline([
+  [37.1,74.9],[36.5,73.5],[36.0,72.5],[35.5,71.8],[35.0,71.2],
+  [34.5,70.8],[34.0,70.5],[33.5,70.2],[33.0,70.0],[32.5,69.5],
+  [32.0,69.0],[31.5,68.8],[31.0,68.5],[30.5,67.5],[30.0,66.5],
+  [29.5,65.0],[29.0,63.5],[28.5,62.0]
+],{color:'#ff3333',weight:2.5,opacity:.85,dashArray:'7,5'})
+.addTo(map).bindPopup('<b style="color:#ff4444">Durand Line</b><br>1,600 mile disputed border');
+
+// KABUL SPECIAL MARKER
+(function(){
+  const html=`
+    <div style="position:relative;width:56px;height:56px;">
+      <div style="position:absolute;top:50%;left:50%;width:56px;height:56px;border-radius:50%;border:2.5px solid #ff2200;opacity:0;animation:kr 1.4s 0s infinite;transform:translate(-50%,-50%)"></div>
+      <div style="position:absolute;top:50%;left:50%;width:38px;height:38px;border-radius:50%;border:2px solid #ff2200;opacity:0;animation:kr 1.4s .35s infinite;transform:translate(-50%,-50%)"></div>
+      <div style="position:absolute;top:50%;left:50%;width:22px;height:22px;border-radius:50%;border:2px solid #ff3300;opacity:0;animation:kr 1.4s .7s infinite;transform:translate(-50%,-50%)"></div>
+      <div style="position:absolute;top:50%;left:50%;width:14px;height:14px;border-radius:50%;background:#ff2200;box-shadow:0 0 20px #ff2200;animation:kc 1s infinite;transform:translate(-50%,-50%)"></div>
+      <div style="position:absolute;top:-20px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:800;color:#ff4400;text-shadow:0 0 6px #000,0 0 12px #ff2200">&#9992; KABUL STRUCK</div>
+      <div style="position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:8px;color:#993322;font-weight:600">3 EXPLOSIONS NOW</div>
+    </div>
+    <style>
+      @keyframes kr{0%{transform:translate(-50%,-50%) scale(.3);opacity:.9}100%{transform:translate(-50%,-50%) scale(1.1);opacity:0}}
+      @keyframes kc{0%,100%{box-shadow:0 0 10px #ff2200;transform:translate(-50%,-50%) scale(1)}50%{box-shadow:0 0 28px #ff2200,0 0 50px #ff110066;transform:translate(-50%,-50%) scale(1.3)}}
+    </style>`;
+  L.marker([34.52,69.18],{icon:L.divIcon({html,className:'',iconSize:[56,56],iconAnchor:[28,28]}),zIndexOffset:9999})
+  .addTo(map)
+  .bindPopup(`
+    <div style="font-family:'Segoe UI',sans-serif;min-width:245px;max-width:300px;">
+      <div style="background:#1e0000;margin:-13px -20px 10px;padding:9px 13px;border-bottom:3px solid #ff2200;">
+        <div style="font-size:14px;font-weight:800;color:#ff4400">&#9992; KABUL — EXPLOSIONS NOW</div>
+        <div style="font-size:9px;color:#aa5533;margin-top:2px">&#128308; Washington Post + Al Jazeera — 15 minutes ago</div>
+      </div>
+      <div style="font-size:11px;color:#ddd;line-height:1.55;margin-bottom:8px">
+        <b style="color:#ff7755">Washington Post (15 min ago):</b> "At least three explosions and the sound of aircraft reverberated in Kabul early Friday, hours after Afghanistan launched a cross-border attack on Pakistan."<br><br>
+        <b style="color:#ff7755">Al Jazeera:</b> "Hours after Afghanistan announced its border offensive, at least one loud explosion was reported in the capital Kabul along with the sound of aircraft."<br><br>
+        Aircraft identity not officially confirmed. Presumed PAK PAF retaliation.
+      </div>
+      <div style="font-size:10px;border-top:1px solid #1e1e1e;padding-top:5px">
+        <div><b style="color:#cc5533">&#128163;</b> <span style="color:#bbb">3 explosions confirmed, aircraft heard</span></div>
+        <div style="margin-top:2px"><b style="color:#cc5533">&#128240;</b> <span style="color:#555">Washington Post / Al Jazeera — NOW</span></div>
+      </div>
+    </div>
+  `,{maxWidth:315});
+})();
+
+const incidents = [
+  {id:1,hot:true,type:'afg',color:'#0099ff',size:17,
+   title:'AFG LIVE — Kunar Offensive (Hottest Front)',
+   detail:'Deputy spokesman Fitrat: 40 PAK soldiers killed, 15 posts captured, soldiers taken prisoner. PAK PM spokesman Zaidi: "no Pakistani post captured, no soldiers killed." CNN unable to independently verify AFG claims. Both sides actively engaged.',
+   lat:34.93,lng:71.08,date:'Feb 26/27, 2026 — ONGOING',
+   cas:'AFG: 40 PAK KIA | PAK confirms: 2 KIA, 3 WIA',src:'CNN / WashPost / Euronews'},
+  {id:2,hot:true,type:'afg',color:'#0088ee',size:15,
+   title:'AFG LIVE — Chitral Sector',
+   detail:'Taliban opened fire in Chitral. PAK claims heavy casualties on Afghan side. Specialized laser units reportedly operating at night. One of 6 active sectors.',
+   lat:35.85,lng:71.79,date:'Feb 26/27, 2026 — ONGOING',
+   cas:'Unconfirmed',src:'Pakistan MoIB / Al Jazeera'},
+  {id:3,hot:true,type:'afg',color:'#0088ee',size:15,
+   title:'AFG LIVE — Khyber Sector',
+   detail:'Heavy clashes. AFG claims 15 posts seized total across all sectors. PAK says no posts captured or damaged. Afghan soldiers fled 3 locations per PAK security source.',
+   lat:34.1,lng:71.05,date:'Feb 26/27, 2026 — ONGOING',
+   cas:'Both sides claim wins',src:'Pakistan MoIB / Al Jazeera'},
+  {id:4,hot:true,type:'afg',color:'#0088ee',size:15,
+   title:'AFG LIVE — Mohmand Sector',
+   detail:'Active clashes. PAK reports Afghan posts and equipment destroyed. AFG drones crossed Pakistani airspace — PAK claims they were intercepted and destroyed.',
+   lat:34.4,lng:71.32,date:'Feb 26/27, 2026 — ONGOING',
+   cas:'PAK: posts and drones destroyed',src:'Pakistan MoIB'},
+  {id:5,hot:true,type:'afg',color:'#0088ee',size:15,
+   title:'AFG LIVE — Kurram Sector',
+   detail:'Active fighting. Multiple Taliban posts claimed captured. PAK counter-fire killed Afghan soldiers. Mortars deployed.',
+   lat:33.65,lng:70.5,date:'Feb 26/27, 2026 — ONGOING',
+   cas:'Contested',src:'Reuters / Al Jazeera'},
+  {id:6,hot:true,type:'afg',color:'#0088ee',size:15,
+   title:'AFG LIVE — Bajaur Sector',
+   detail:'Part of Taliban\'s 6-province simultaneous Durand Line offensive. Heavy weapons used both sides.',
+   lat:34.68,lng:71.5,date:'Feb 26/27, 2026 — ONGOING',
+   cas:'Unknown',src:'Pakistan MoIB / Euronews'},
+  {id:7,hot:false,type:'pak',color:'#ff0000',size:16,
+   title:'PAF Airstrike — Nangarhar (Behsud/Khogyani)',
+   detail:'PAF struck 11:45pm–12:15am. UNAMA: 13 civilians killed incl. women & children. Taliban: 18 killed incl. 11 children (Girdi Kas village, one family). AFG MoD: school and homes hit. PAK: 7 TTP/ISKP camps destroyed.',
+   lat:34.35,lng:70.52,date:'Feb 21–22, 2026',
+   cas:'UNAMA: 13 civilians | Taliban: 18 incl 11 children',src:'UNAMA / Al Jazeera / CNN'},
+  {id:8,hot:false,type:'pak',color:'#ff0000',size:15,
+   title:'PAF Airstrike — Paktika (Bermal/Argun)',
+   detail:'PAF struck Bermal and Argun districts. UNAMA: infrastructure damaged, no civilian casualties. PAK: TTP camp destroyed.',
+   lat:32.45,lng:68.85,date:'Feb 21–22, 2026',
+   cas:'Infrastructure destroyed (UNAMA)',src:'UNAMA / Wikipedia'},
+  {id:9,hot:false,type:'pak',color:'#ff0000',size:14,
+   title:'PAF Airstrike — Khost Province',
+   detail:'PAF struck Khost targeting TTP hideouts. 7th documented PAK airstrike on Afghanistan since 2021.',
+   lat:33.33,lng:69.92,date:'Feb 21–22, 2026',
+   cas:'Unconfirmed',src:'Wikipedia'},
+  {id:10,hot:false,type:'pak_oct',color:'#ff5500',size:14,
+   title:'PAF Struck Kabul + Kandahar — Oct 2025',
+   detail:'Oct 9: 2 explosions in Kabul PD4 district, 9 killed, 37 injured. TTP HQ targeted. TTP Emir Mehsud survived. Oct 15: Kandahar also struck. 10-day war followed. Qatar/Turkey ceasefire Oct 19 — now broken.',
+   lat:34.52,lng:69.18,date:'Oct 9 & 15, 2025',
+   cas:'9 killed, 37 injured Kabul PD4',src:'Wikipedia / CNN / Al Jazeera'},
+  {id:11,hot:false,type:'clash',color:'#ffcc00',size:13,
+   title:'Dand Patan — Heavy Weapons Exchange',
+   detail:'Clashes in Maqbal area. Both sides used heavy weapons including artillery.',
+   lat:33.3,lng:69.9,date:'Feb 25, 2026',
+   cas:'Unknown',src:'Khorasan Diary'},
+  {id:12,hot:false,type:'clash',color:'#ffcc00',size:12,
+   title:'Shahkot Clashes — Nangarhar Border',
+   detail:'Both sides accused each other of firing first near Shahkot/Torkham.',
+   lat:34.0,lng:71.15,date:'Feb 24, 2026',
+   cas:'None reported (AFG)',src:'Al Jazeera'},
+  {id:13,hot:false,type:'bdr',color:'#aa00aa',size:12,
+   title:'Torkham Border — CLOSED',
+   detail:'KPK–Nangarhar trade route sealed since Oct 2025.',
+   lat:34.1,lng:71.08,date:'Since Oct 2025',
+   cas:'Trade disrupted',src:'Wikipedia'},
+  {id:14,hot:false,type:'bdr',color:'#aa00aa',size:12,
+   title:'Chaman–Spin Boldak — CLOSED',
+   detail:'Balochistan–Kandahar crossing sealed. Oct 15: 7 civilians killed incl. infant. Dec 5: 2 Taliban + 4 civilians.',
+   lat:30.92,lng:66.45,date:'Since Oct 2025',
+   cas:'Multiple casualties at crossing',src:'Wikipedia / BBC Verify'},
+  {id:15,hot:false,type:'civ',color:'#44cc44',size:12,
+   title:'Girdi Kas Village — Mass Civilian Casualty',
+   detail:'Family home struck in Behsud. 23 family members trapped under rubble. Mass burial. AFP/Tolo News documented.',
+   lat:34.3,lng:70.42,date:'Feb 22, 2026',
+   cas:'18–23 killed (single family)',src:'Tolo News / AFP'},
+  {id:16,hot:false,type:'trg',color:'#ff8800',size:14,
+   title:'TRIGGER — ISKP Mosque Bombing, Islamabad',
+   detail:'Khadija Tul Kubra mosque bombed. 36 killed, 170+ wounded. ISKP claimed. 2nd bombing same mosque in 3 months. Direct trigger for PAF Feb 22 strikes.',
+   lat:33.6,lng:72.8,date:'Feb 6, 2026',
+   cas:'36 killed, 170+ wounded',src:'Al Jazeera / CNN'},
+  {id:17,hot:false,type:'trg',color:'#ff8800',size:13,
+   title:'TRIGGER — TTP Attack, Bajaur Security Post',
+   detail:'VBIED hit joint post. 11 soldiers + 1 child killed. Attacker Afghan national from Balkh. TTP claimed.',
+   lat:34.7,lng:71.4,date:'Feb 16, 2026',
+   cas:'11 soldiers + 1 child',src:'Al Jazeera'},
+  {id:18,hot:false,type:'trg',color:'#ff8800',size:13,
+   title:'TRIGGER — TTP Attack, Bannu Convoy',
+   detail:'Suicide bomber hit convoy. 2 soldiers killed incl. Lt. Colonel. Final trigger for Operation Ghazab-lil-Haqq.',
+   lat:33.0,lng:70.6,date:'Feb 21, 2026',
+   cas:'2 soldiers killed',src:'Al Jazeera'},
+];
+
+function mkIcon(color,size,pulse){
+  const anim=pulse?`<style>@keyframes pi${color.replace(/[^a-f0-9]/gi,'')}{0%,100%{box-shadow:0 0 7px ${color};transform:scale(1)}50%{box-shadow:0 0 24px ${color};transform:scale(1.22)}}</style>`:'';
+  return L.divIcon({
+    html:`<div style="width:${size}px;height:${size}px;background:${color};border-radius:50%;border:2px solid rgba(255,255,255,.28);box-shadow:0 0 ${pulse?12:4}px ${color};${pulse?`animation:pi${color.replace(/[^a-f0-9]/gi,'')} 1.25s infinite;`:''}""></div>${anim}`,
+    className:'',iconSize:[size,size],iconAnchor:[size/2,size/2]
+  });
+}
+
+const tagMap={
+  afg:['t-afglive','⚔️ AFG Offensive'],
+  pak:['t-pak','✈️ PAF Strike Feb 22'],
+  pak_oct:['t-pak','✈️ PAF Strike Oct 2025'],
+  clash:['t-clash','💥 Clashes'],
+  bdr:['t-bdr','🚫 Border Closed'],
+  civ:['t-civ','👤 Civilians'],
+  trg:['t-trg','💣 Trigger'],
+};
+
+const feed=document.getElementById('feed');
+incidents.forEach(inc=>{
+  const m=L.marker([inc.lat,inc.lng],{icon:mkIcon(inc.color,inc.size,inc.hot),zIndexOffset:inc.hot?500:0}).addTo(map);
+  const [tc,tl]=tagMap[inc.type]||['',''];
+  m.bindPopup(`
+    <div style="font-family:'Segoe UI',sans-serif;min-width:225px;max-width:290px;">
+      <div style="background:#0e0e0e;margin:-13px -20px 10px;padding:9px 13px;border-bottom:2px solid ${inc.color}">
+        <div style="font-size:12px;font-weight:700;color:#fff;line-height:1.3">${inc.title}</div>
+        <div style="font-size:9px;color:#555;margin-top:2px">${inc.date}</div>
+      </div>
+      <div style="font-size:11px;color:#ccc;line-height:1.5;margin-bottom:7px">${inc.detail}</div>
+      <div style="font-size:10px;border-top:1px solid #1a1a1a;padding-top:5px">
+        <div><b style="color:#cc6644">💀</b> <span style="color:#bbb">${inc.cas}</span></div>
+        <div style="margin-top:2px"><b style="color:#cc6644">📰</b> <span style="color:#555">${inc.src}</span></div>
+      </div>
+    </div>
+  `,{maxWidth:305});
+  m.on('click',()=>{const el=document.getElementById('i'+inc.id);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.style.background='#180800';setTimeout(()=>el.style.background='',700);}});
+
+  const d=document.createElement('div');
+  d.className='incident'+(inc.hot?' hot':inc.type==='afg'?' afg':'');
+  d.id='i'+inc.id;
+  d.innerHTML=`<div class="inc-title">${inc.title}</div><div style="margin-bottom:3px"><span class="tag ${tc}">${tl}</span>${inc.hot?'<span class="tag t-live">🔴 LIVE</span>':''}</div><div style="font-size:9px;color:#444;margin-bottom:1px">💀 ${inc.cas}</div><div style="font-size:9px;color:#2e2e2e">📰 ${inc.src}</div>`;
+  d.addEventListener('click',()=>map.setView([inc.lat,inc.lng],9,{animate:true}));
+  feed.appendChild(d);
+});
+
+[
+  ['CHITRAL',35.85,71.36,false],['KHYBER',34.28,71.0,false],['MOHMAND',34.52,71.16,false],
+  ['BAJAUR',34.7,71.63,false],['KURRAM',33.72,70.28,false],['KUNAR ★',34.93,71.28,true],
+  ['NANGARHAR',34.28,69.82,false],['PAKTIA',33.52,69.42,false],['PAKTIKA',32.4,68.52,false],
+  ['KHOST',33.3,69.82,false],['KABUL &#128308;',34.65,69.25,true],
+  ['&#8592; AFGHANISTAN',33.5,67.0,false],['KPK PAKISTAN &#8594;',34.2,72.56,false],
+  ['BALOCHISTAN',29.5,67.0,false],['KANDAHAR',31.6,65.7,false],
+].forEach(([n,la,lo,hot])=>{
+  L.marker([la,lo],{icon:L.divIcon({
+    html:`<div style="color:${hot?'rgba(255,100,50,.75)':'rgba(255,255,255,.2)'};font-size:${hot?'10':'9'}px;font-weight:700;letter-spacing:1.2px;white-space:nowrap;text-shadow:0 0 5px #000">${n}</div>`,
+    className:'',iconSize:[160,13],iconAnchor:[80,6]
+  })}).addTo(map);
+});
+</script>
+</body>
+</html>
