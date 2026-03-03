@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pakistan-Taliban War Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: #000000;
+            color: #ffffff;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(255, 56, 56, 0.05) 0%, transparent 50%), 
+                radial-gradient(circle at 80% 80%, rgba(0, 212, 255, 0.05) 0%, transparent 50%);
+        }
+
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.1;
+            background-image: 
+                linear-gradient(90deg, #fff 1px, transparent 1px), 
+                linear-gradient(0deg, #fff 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: slideGrid 20s linear infinite;
+        }
+
+        @keyframes slideGrid {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { text-shadow: 0 0 10px rgba(255, 56, 56, 0.5), 0 0 20px rgba(255, 56, 56, 0.3); }
+            50% { text-shadow: 0 0 20px rgba(255, 56, 56, 0.8), 0 0 40px rgba(255, 56, 56, 0.5); }
+        }
+
+        @keyframes float-in {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideGradient {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .glitch-text {
+            animation: pulse-glow 2s ease-in-out infinite;
+            font-family: 'Orbitron', monospace;
+            letter-spacing: 2px;
+            font-weight: 900;
+        }
+
+        .card {
+            animation: float-in 0.6s ease-out forwards;
+        }
+
+        .card:nth-child(1) { animation-delay: 0.1s; }
+        .card:nth-child(2) { animation-delay: 0.2s; }
+        .card:nth-child(3) { animation-delay: 0.3s; }
+        .card:nth-child(4) { animation-delay: 0.4s; }
+
+        header {
+            border-bottom: 1px solid rgba(139, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: 0 10px 40px rgba(255, 56, 56, 0.1);
+            padding: 1.5rem 0;
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .header-container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo-box {
+            width: 48px;
+            height: 48px;
+            background: #4a0000;
+            border: 2px solid #ff3838;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .header-text h1 {
+            font-size: 2rem;
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            letter-spacing: 2px;
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .header-text p {
+            font-size: 0.7rem;
+            color: #999999;
+            letter-spacing: 2px;
+            margin-top: 0.25rem;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(139, 0, 0, 0.2);
+            border: 1px solid rgba(255, 56, 56, 0.5);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-family: 'Space Mono', monospace;
+            letter-spacing: 1px;
+            color: #ff6464;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff3838;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        main {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .kpi-card {
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.3) 0%, rgba(0, 0, 0, 1) 100%);
+            border: 1px solid rgba(139, 0, 0, 0.5);
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            animation: float-in 0.6s ease-out forwards;
+        }
+
+        .kpi-card:hover {
+            border-color: rgba(255, 100, 100, 0.8);
+            transform: translateY(-5px);
+        }
+
+        .kpi-header {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            color: #999999;
+            letter-spacing: 2px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .kpi-icon {
+            font-size: 1.25rem;
+            color: #ff3838;
+        }
+
+        .kpi-value {
+            font-size: 3rem;
+            font-family: 'Orbitron', monospace;
+            font-weight: 900;
+            margin-bottom: 0.5rem;
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+
+        .kpi-change {
+            font-size: 0.75rem;
+            color: #666666;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(128, 128, 128, 0.3);
+            padding-bottom: 0;
+        }
+
+        .tab-btn {
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-family: 'Space Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: #888888;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: #aaaaaa;
+        }
+
+        .tab-btn.active {
+            border-bottom-color: #ff3838;
+            color: #ff6464;
+        }
+
+        .tab-content {
+            display: none;
+            animation: float-in 0.6s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        section {
+            background: linear-gradient(135deg, #0a0a0a 0%, #000000 100%);
+            border: 1px solid rgba(128, 128, 128, 0.3);
+            border-radius: 8px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        section h2 {
+            font-size: 1.25rem;
+            font-family: 'Orbitron', monospace;
+            margin-bottom: 1.5rem;
+            color: #e0e0e0;
+        }
+
+        .event-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 56, 56, 0.3);
+            border-radius: 6px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            animation: float-in 0.6s ease-out forwards;
+        }
+
+        .event-item:nth-child(1) { animation-delay: 0.1s; }
+        .event-item:nth-child(2) { animation-delay: 0.2s; }
+        .event-item:nth-child(3) { animation-delay: 0.3s; }
+        .event-item:nth-child(4) { animation-delay: 0.4s; }
+        .event-item:nth-child(5) { animation-delay: 0.5s; }
+        .event-item:nth-child(6) { animation-delay: 0.6s; }
+
+        .event-date {
+            color: #ff3838;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .event-title {
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 0.25rem;
+        }
+
+        .event-details {
+            font-size: 0.85rem;
+            color: #aaaaaa;
+            line-height: 1.5;
+        }
+
+        .location-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .location-card {
+            background: rgba(255, 56, 56, 0.1);
+            border: 1px solid rgba(255, 56, 56, 0.3);
+            border-radius: 6px;
+            padding: 1rem;
+            animation: float-in 0.6s ease-out forwards;
+        }
+
+        .location-card:nth-child(1) { animation-delay: 0.1s; }
+        .location-card:nth-child(2) { animation-delay: 0.2s; }
+        .location-card:nth-child(3) { animation-delay: 0.3s; }
+        .location-card:nth-child(4) { animation-delay: 0.4s; }
+        .location-card:nth-child(5) { animation-delay: 0.5s; }
+        .location-card:nth-child(6) { animation-delay: 0.6s; }
+
+        .location-name {
+            font-weight: bold;
+            color: #ff3838;
+            margin-bottom: 0.5rem;
+        }
+
+        .location-info {
+            font-size: 0.85rem;
+            color: #aaaaaa;
+        }
+
+        .casualty-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .casualty-row:last-child {
+            border-bottom: none;
+        }
+
+        .casualty-label {
+            color: #999999;
+        }
+
+        .casualty-number {
+            font-weight: bold;
+            color: #ff3838;
+            font-size: 1.2rem;
+        }
+
+        footer {
+            border-top: 1px solid rgba(128, 128, 128, 0.3);
+            margin-top: 4rem;
+            padding: 2rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #888888;
+            font-family: 'Space Mono', monospace;
+            position: relative;
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .kpi-value {
+                font-size: 2rem;
+            }
+
+            .header-text h1 {
+                font-size: 1.5rem;
+            }
+
+            main {
+                padding: 1.5rem 1rem;
+            }
+
+            .location-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grid-bg"></div>
+
+    <header>
+        <div class="header-container">
+            <div class="header-left">
+                <div class="logo-box">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="header-text">
+                    <h1>PAKISTAN-TALIBAN WAR</h1>
+                    <p>COMPREHENSIVE CONFLICT ANALYSIS</p>
+                </div>
+            </div>
+            <div class="status-badge">
+                <span>STATUS: OPEN WAR</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">TOTAL CASUALTIES</span>
+                    <i class="fas fa-chart-bar kpi-icon"></i>
+                </div>
+                <div class="kpi-value">1,200+</div>
+                <p class="kpi-change">2025 deaths (double from 2021)</p>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">AIRSTRIKES CONDUCTED</span>
+                    <i class="fas fa-plane kpi-icon"></i>
+                </div>
+                <div class="kpi-value">46+</div>
+                <p class="kpi-change">Locations hit by Pakistan since Feb 2026</p>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">BORDER CLASHES</span>
+                    <i class="fas fa-fire kpi-icon"></i>
+                </div>
+                <div class="kpi-value">75</div>
+                <p class="kpi-change">Since Taliban takeover in 2021</p>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-header">
+                    <span class="kpi-label">TTP ESTIMATED STRENGTH</span>
+                    <i class="fas fa-users kpi-icon"></i>
+                </div>
+                <div class="kpi-value">35,000</div>
+                <p class="kpi-change">Active militants in Afghanistan</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="timeline">TIMELINE</button>
+            <button class="tab-btn" data-tab="locations">LOCATIONS</button>
+            <button class="tab-btn" data-tab="operations">OPERATIONS</button>
+            <button class="tab-btn" data-tab="casualties">CASUALTIES</button>
+        </div>
+
+        <!-- Timeline Tab -->
+        <div id="timeline" class="tab-content active">
+            <section>
+                <h2><i class="fas fa-history"></i> CONFLICT TIMELINE</h2>
+                
+                <div class="event-item">
+                    <div class="event-date">🔴 FEBRUARY 27, 2026</div>
+                    <div class="event-title">PAKISTAN DECLARES "OPEN WAR" - AIRSTRIKES ON KABUL & KANDAHAR</div>
+                    <div class="event-details">
+                        Defense Minister Khawaja Asif declares "open war" between Pakistan and Afghan Taliban. Pakistan launches coordinated airstrikes on Kabul, Kandahar, and Paktia provinces. Operation "Ghazab Lil Haq" (Righteous Fury) targets Taliban brigade headquarters, weapons depots, and border installations. Pakistan claims to have destroyed 83 Taliban posts, captured 17 others, and destroyed 171 tanks.
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">🔴 FEBRUARY 26, 2026</div>
+                    <div class="event-title">AFGHAN TALIBAN LAUNCHES CROSS-BORDER OFFENSIVE</div>
+                    <div class="event-details">
+                        Taliban forces conduct large-scale attacks against Pakistani military posts along Durand Line. Afghan sources claim 10 Pakistani soldiers killed and 13 outposts captured. Taliban spokesperson Zabihullah Mujahid confirms offensive in retaliation for Pakistani airstrikes in Nangarhar and Paktia.
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">🔴 MARCH 1, 2026</div>
+                    <div class="event-title">PAKISTAN HITS BAGRAM AIRFIELD</div>
+                    <div class="event-details">
+                        Pakistan's information minister Attaullah Tarar reveals 46 locations across Afghanistan hit by airstrikes since operation began, including historic Bagram Airfield. Pakistan continues operations on Prime Minister's orders.
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">⚠️ FEBRUARY 21, 2026</div>
+                    <div class="event-title">PAKISTAN AIRSTRIKES BEGIN - OPERATION AGAINST TTP HIDEOUTS</div>
+                    <div class="event-details">
+                        Pakistan Air Force conducts airstrikes on alleged TTP camps in Nangarhar, Paktika, and Khost provinces. Pakistan reports 80+ militants killed; Afghanistan confirms 18 civilian deaths including 11 children in Bihsud District. Retaliation for suicide bombing at Shiite mosque in Islamabad (36 killed) and other terror attacks.
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">⚠️ FEBRUARY 6-16, 2026</div>
+                    <div class="event-title">TERROR ATTACKS TRIGGER ESCALATION</div>
+                    <div class="event-details">
+                        Series of terror attacks across Pakistan: Suicide bombing at Shia mosque in Islamabad kills 36 people. Attack on checkpoint in Bajaur kills 11 soldiers and 1 child. Balochistan Liberation Army (BLA) attacks from January 29-February 5. Pakistan issues démarche to Afghan ambassador, warns of military action.
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">🟡 OCTOBER 2025</div>
+                    <div class="event-title">MAJOR ESCALATION & CEASEFIRE</div>
+                    <div class="event-details">
+                        October 9: Pakistan airstrikes in Kabul, Khost, Jalalabad targeting TTP leader Noor Wali Mehsud (survives). October 11-12: Afghan Taliban retaliatory attacks on Pakistani posts. October 15: Heavy fighting in Spin Boldak, Kandahar with 12+ Afghan civilian deaths. October 19: Qatar and Turkey-mediated ceasefire agreed. Ceasefire breaks down as TTP continues attacks.
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Locations Tab -->
+        <div id="locations" class="tab-content">
+            <section>
+                <h2><i class="fas fa-map-pin"></i> KEY CONFLICT LOCATIONS</h2>
+                
+                <div class="location-grid">
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 KABUL</div>
+                        <div class="location-info">Capital of Afghanistan. Pakistan airstrikes on February 21 & 27, 2026. Abdul Haq Square targeted.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 KANDAHAR</div>
+                        <div class="location-info">Taliban supreme leader Hibatullah Akhundzada base. Major Pakistan airstrike target. February 27 strikes hit army headquarters.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 BAGRAM AIRFIELD</div>
+                        <div class="location-info">Historic military base. Struck by Pakistan on March 1, 2026. Part of Operation "Ghazab Lil Haq".</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 NANGARHAR PROVINCE</div>
+                        <div class="location-info">Major conflict zone. Pakistan airstrikes February 21. Civilian casualties reported in Bihsud District. TTP hideouts targeted.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 KHOST PROVINCE</div>
+                        <div class="location-info">Eastern border region. Pakistan airstrikes in October 2025 and February 2026. TTP militia camps reported.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 PAKTIKA PROVINCE</div>
+                        <div class="location-info">Border region with Pakistan. December 2024 & February 2026 airstrikes. TTP stronghold.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 SPIN BOLDAK (KANDAHAR)</div>
+                        <div class="location-info">Border crossing with Pakistan. October 15, 2025: Heavy fighting, 12+ civilians killed, 122+ wounded. Taliban claims captured posts.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇵🇰 KUNAR PROVINCE (BORDER)</div>
+                        <div class="location-info">Pakistan-Afghanistan border. Cross-border attacks, mortar fire, RPG strikes. January 2026: RPG hit football field in North Waziristan, 3 wounded.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇵🇰 KHYBER PAKHTUNKHWA</div>
+                        <div class="location-info">Pakistani province bordering Afghanistan. Heavy TTP attack base. Border clashes ongoing. Chitral, Khyber, Mohmand, Kurram, Bajaur sectors active.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇵🇰 ISLAMABAD</div>
+                        <div class="location-info">Pakistan capital. February 6: Suicide bombing at Shia mosque kills 36 people. Major trigger for military response.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇵🇰 BAJAUR</div>
+                        <div class="location-info">Border district. February 16: TTP attack kills 11 soldiers and 1 child. Ongoing military operations.</div>
+                    </div>
+
+                    <div class="location-card">
+                        <div class="location-name">🇦🇫 DURAND LINE</div>
+                        <div class="location-info">2,610 km border between Pakistan and Afghanistan. Disputed colonial-era demarcation. 75+ clashes since 2021. Core of conflict.</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Operations Tab -->
+        <div id="operations" class="tab-content">
+            <section>
+                <h2><i class="fas fa-bomb"></i> MILITARY OPERATIONS</h2>
+                
+                <div class="event-item">
+                    <div class="event-date">OPERATION GHAZAB LIL HAQ</div>
+                    <div class="event-title">"RIGHTEOUS FURY" - Pakistan's Main Campaign</div>
+                    <div class="event-details">
+                        <strong>Start Date:</strong> February 27, 2026<br>
+                        <strong>Scope:</strong> Coordinated air and ground operations against Afghan Taliban<br>
+                        <strong>Targets:</strong> Brigade headquarters, weapons depots, border installations, tank positions<br>
+                        <strong>Results (Claimed):</strong> 46+ locations hit, 83 Taliban posts destroyed, 26 captured, 171 tanks/APCs destroyed<br>
+                        <strong>Sectors Active:</strong> Chitral, Khyber, Mohmand, Kurram, Bajaur<br>
+                        <strong>Status:</strong> Ongoing as of March 1, 2026
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">OPERATION KHYBER STORM</div>
+                    <div class="event-title">Pakistan's October 2025 Campaign</div>
+                    <div class="event-details">
+                        <strong>Start Date:</strong> October 9, 2025<br>
+                        <strong>Initial Target:</strong> TTP leader Noor Wali Mehsud in Kabul (survived attack)<br>
+                        <strong>Targets:</strong> Kabul, Khost, Jalalabad, Paktika provinces<br>
+                        <strong>Escalation:</strong> Taliban counter-attacks killed 23+ Pakistani soldiers<br>
+                        <strong>Result:</strong> Qatar/Turkey mediated ceasefire October 19 (later broken)
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">AFGHAN TALIBAN RESPONSE</div>
+                    <div class="event-title">Cross-Border Offensive February 26, 2026</div>
+                    <div class="event-details">
+                        <strong>Operation Type:</strong> Large-scale offensive operations along Durand Line<br>
+                        <strong>Targets:</strong> Multiple Pakistani military posts and border installations<br>
+                        <strong>Claims:</strong> 10 Pakistani soldiers killed, 13 outposts captured<br>
+                        <strong>Weapons Used:</strong> Drone strikes, suicide bombers, RPGs, small arms fire<br>
+                        <strong>Areas:</strong> Nangarhar, Khost, Paktia provinces
+                    </div>
+                </div>
+
+                <div class="event-item">
+                    <div class="event-date">BAGRAM AIRFIELD STRIKES</div>
+                    <div class="event-title">Pakistan Targets Historic Military Base</div>
+                    <div class="event-details">
+                        <strong>Date:</strong> March 1, 2026<br>
+                        <strong>Location:</strong> Bagram Airfield (30 km north of Kabul)<br>
+                        <strong>Significance:</strong> Former US military hub, now Taliban-controlled<br>
+                        <strong>Objective:</strong> Destroy military capabilities and command centers<br>
+                        <strong>Impact:</strong> Part of 46-location bombing campaign
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Casualties Tab -->
+        <div id="casualties" class="tab-content">
+            <section>
+                <h2><i class="fas fa-heartbeat"></i> CASUALTY ASSESSMENT</h2>
+                
+                <div style="background: rgba(255, 56, 56, 0.1); border: 1px solid rgba(255, 56, 56, 0.3); border-radius: 8px; padding: 2rem;">
+                    <h3 style="margin-bottom: 1.5rem; color: #ff3838;">2025 STATISTICS</h3>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Total Deaths in Pakistan (Military + Civilians)</div>
+                        <div class="casualty-number">1,200+</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Increase vs 2021</div>
+                        <div class="casualty-number">100% DOUBLED</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Violent Incidents (TTP)</div>
+                        <div class="casualty-number">1,000+</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255, 150, 40, 0.1); border: 1px solid rgba(255, 150, 40, 0.3); border-radius: 8px; padding: 2rem; margin-top: 1.5rem;">
+                    <h3 style="margin-bottom: 1.5rem; color: #ff9628;">RECENT OPERATIONS (Feb-Mar 2026)</h3>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Pakistan Airstrike Casualties (Afghan Claim)</div>
+                        <div class="casualty-number">18 CIVILIANS</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Pakistan Military Claim (Feb 21)</div>
+                        <div class="casualty-number">80+ MILITANTS</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Pakistani Soldiers (Feb 26 Attack)</div>
+                        <div class="casualty-number">10+ KILLED</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Pakistani Forces (Feb 27 Clashes)</div>
+                        <div class="casualty-number">HEAVY (Claimed)</div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255, 200, 40, 0.1); border: 1px solid rgba(255, 200, 40, 0.3); border-radius: 8px; padding: 2rem; margin-top: 1.5rem;">
+                    <h3 style="margin-bottom: 1.5rem; color: #ffc828;">OCTOBER 2025 ESCALATION</h3>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Pakistani Soldiers Killed</div>
+                        <div class="casualty-number">23</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Afghan Soldiers Killed</div>
+                        <div class="casualty-number">9</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Spin Boldak Civilian Deaths</div>
+                        <div class="casualty-number">12-29</div>
+                    </div>
+                    <div class="casualty-row">
+                        <div class="casualty-label">Spin Boldak Wounded</div>
+                        <div class="casualty-number">100+</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer>
+        Data compiled from Al Jazeera, CNN, Military.com, CSIS, Britannica, Wikipedia, and Pakistani Military sources. 
+        Last updated: March 2026. Assessment: OPEN WAR STATUS - ONGOING CONFLICT
+    </footer>
+
+    <script>
+        // Tab functionality
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const tabName = btn.dataset.tab;
+
+                // Remove active from all buttons
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // Hide all content
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(tabName).classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
